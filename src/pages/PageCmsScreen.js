@@ -142,7 +142,13 @@ const PageCmsScreen = ({ db, pageList, fetchData, handleDelete }) => {
 
         <div style={{marginBottom:'20px'}}>
           <label style={{fontSize:'0.85rem', fontWeight:'bold', color:'#4a5568'}}>🖋️ ページ本文・紹介用コンテンツ</label>
-          <div style={{background:'white', marginBottom:'50px'}}><ReactQuill theme="snow" value={pageContent} onChange={setPageContent} style={{height:'350px'}} /></div>
+          <div style={{marginBottom:'20px'}}>
+            <textarea rows={15} value={pageContent}
+              onChange={e => setPageContent(e.target.value)}
+              placeholder="HTMLコードまたは本文テキストをここに入力してください"
+              style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '0.9rem', boxSizing: 'border-box' }}
+            />
+          </div>
         </div>
 
         <div style={{borderTop:'1px solid #edf2f7', paddingTop:'20px', display:'flex', gap:'15px'}}>
