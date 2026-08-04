@@ -7,7 +7,7 @@ import {
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 
-// --- Firebase�ݒ� ---
+// --- Firebase設定 ---
 const firebaseConfig = {
   apiKey: "AIzaSyDUlCG0Nh_Yw0zquCJ5QT43DNWIPNr_DiQ",
   authDomain: "pet-cpr.firebaseapp.com",
@@ -30,7 +30,7 @@ const AdminApp = () => {
   const [instaUrl, setInstaUrl] = useState(''); 
   const [instaLinks, setInstaLinks] = useState([]); 
 
-  // --- �f�[�^�擾 ---
+  // --- データ取得 ---
   const fetchNews = async () => {
     const q = query(collection(db, "news"), orderBy("publishedAt", "desc"));
     const snap = await getDocs(q);
@@ -44,20 +44,20 @@ const AdminApp = () => {
 
   useEffect(() => { fetchNews(); fetchInstaLinks(); }, []);
 
-  // --- NEWS�ۑ� ---
+  // --- NEWS保存 ---
   const handleSaveNews = async () => {
-    if (!title || !content || !publishDate) return alert("���͂��s�����Ă��܂�");
+    if (!title || !content || !publishDate) return alert("入力が不足しています");
     try {
       await addDoc(collection(db, "news"), {
         title, content, publishedAt: new Date(publishDate), createdAt: serverTimestamp()
       });
-      alert("NEWS�𓊍e���܂���");
+      alert("NEWSを投稿しました");
       setTitle(''); setContent(''); setPublishDate('');
       fetchNews();
-    } catch (e) { alert("�G���[���������܂���"); }
+    } catch (e) { alert("エラーが発生しました"); }
   };
 
-  // --- Instagram�ۑ��E�폜 ---
+  // --- Instagram保存・削除 ---
   const handleSaveInsta = async () => {
     if (!instaUrl) return;
     const newLinks = [instaUrl, ...instaLinks];
@@ -67,13 +67,13 @@ const AdminApp = () => {
   };
 
   const handleDeleteInsta = async (idx) => {
-    if(!window.confirm("���̃����N���폜���܂����H")) return;
+    if(!window.confirm("このリンクを削除しますか？")) return;
     const newLinks = instaLinks.filter((_, i) => i !== idx);
     await setDoc(doc(db, "settings", "instagram"), { urls: newLinks });
     setInstaLinks(newLinks);
   };
 
-  // --- �X�^�C����`�i�R�[�h��\�邾���Ŕ��f�����邽�߁j ---
+  // --- スタイル定義 ---
   const styles = {
     container: { display: 'flex', minHeight: '100vh', background: '#f0f2f5', fontFamily: 'sans-serif' },
     sidebar: { width: '260px', background: '#1c1c1c', color: 'white', padding: '30px 20px' },
@@ -90,58 +90,58 @@ const AdminApp = () => {
 
   return (
     <div style={styles.container}>
-      {/* �����F�i�r���j���[ */}
+      {/* 左側：ナビメニュー */}
       <div style={styles.sidebar}>
-        <h2 style={{ fontSize: '1.2rem', marginBottom: '40px' }}>�Ǘ��p�l��</h2>
-        <div style={styles.navItem(activeTab === 'news')} onClick={() => setActiveTab('news')}>? NEWS�Ǘ�</div>
-        <div style={styles.navItem(activeTab === 'sns')} onClick={() => setActiveTab('sns')}>? SNS�A�g</div>
+        <h2 style={{ fontSize: '1.2rem', marginBottom: '40px' }}>管理パネル</h2>
+        <div style={styles.navItem(activeTab === 'news')} onClick={() => setActiveTab('news')}>📰 NEWS管理</div>
+        <div style={styles.navItem(activeTab === 'sns')} onClick={() => setActiveTab('sns')}>📸 SNS連携</div>
       </div>
 
-      {/* �E���F�R���e���c�G���A */}
+      {/* 右側：コンテンツエリア */}
       <div style={styles.main}>
         
         {activeTab === 'news' ? (
           <div>
-            <h1 style={{ marginBottom: '25px' }}>NEWS�L���쐬</h1>
+            <h1 style={{ marginBottom: '25px' }}>NEWS記事作成</h1>
             <div style={styles.card}>
-              <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="�L���̃^�C�g��" style={styles.input} />
+              <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="記事のタイトル" style={styles.input} />
               <div style={{ marginBottom: '15px' }}>
-                <label style={{ fontSize: '0.8rem', color: '#666' }}>�f�ړ����F</label>
+                <label style={{ fontSize: '0.8rem', color: '#666' }}>掲載日時：</label>
                 <input type="datetime-local" value={publishDate} onChange={(e) => setPublishDate(e.target.value)} style={styles.input} />
               </div>
               <div style={{ marginBottom: '20px', background: 'white' }}>
                 <ReactQuill theme="snow" value={content} onChange={setContent} style={{ height: '250px', marginBottom: '50px' }} />
               </div>
-              <button onClick={handleSaveNews} style={styles.button}>NEWS�����J�ۑ�</button>
+              <button onClick={handleSaveNews} style={styles.button}>NEWSを公開保存</button>
             </div>
 
-            <h2>���e�ς�NEWS</h2>
+            <h2>投稿済みNEWS</h2>
             {newsList.map(news => (
               <div key={news.id} style={{ ...styles.card, padding: '15px', display: 'flex', justifyContent: 'space-between' }}>
                 <div>
                   <strong style={{ fontSize: '1.1rem' }}>{news.title}</strong>
-                  <div style={{ fontSize: '0.8rem', color: '#999' }}>{news.publishedAt.toDate().toLocaleString()}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#999' }}>{news.publishedAt?.toDate ? news.publishedAt.toDate().toLocaleString() : ''}</div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
           <div>
-            <h1 style={{ marginBottom: '25px' }}>Instagram�A�g</h1>
+            <h1 style={{ marginBottom: '25px' }}>Instagram連携</h1>
             <div style={styles.card}>
-              <p style={{ color: '#666', marginBottom: '20px' }}>�\��������Instagram���e��URL��ǉ����Ă��������B</p>
+              <p style={{ color: '#666', marginBottom: '20px' }}>表示したいInstagram投稿のURLを追加してください。</p>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <input type="text" value={instaUrl} onChange={(e) => setInstaUrl(e.target.value)} placeholder="https://www.instagram.com/p/..." style={styles.input} />
-                <button onClick={handleSaveInsta} style={{ ...styles.button, background: '#e1306c', height: '45px' }}>�ǉ�</button>
+                <button onClick={handleSaveInsta} style={{ ...styles.button, background: '#e1306c', height: '45px' }}>追加</button>
               </div>
             </div>
 
-            <h2>�o�^�ς݃����N</h2>
+            <h2>登録済みリンク</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px' }}>
               {instaLinks.map((link, i) => (
                 <div key={i} style={{ ...styles.card, padding: '15px', fontSize: '0.8rem' }}>
                   <div style={{ wordBreak: 'break-all', marginBottom: '10px' }}>{link}</div>
-                  <button onClick={() => handleDeleteInsta(i)} style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer' }}>�폜</button>
+                  <button onClick={() => handleDeleteInsta(i)} style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer' }}>削除</button>
                 </div>
               ))}
             </div>

@@ -19,6 +19,7 @@ import DiagResultsScreen from './pages/DiagResultsScreen';
 import DiagQuestionsScreen from './pages/DiagQuestionsScreen';
 import DiagSettingsScreen from './pages/DiagSettingsScreen';
 import AdminFaqManager from './pages/AdminFaqManager';
+import AdminBenefitsScreen from './pages/AdminBenefitsScreen';
 
 // --- Firebase設定 ---
 const firebaseConfig = {
@@ -46,6 +47,7 @@ const App = () => {
   const [isDiagGroupOpen, setIsDiagGroupOpen] = useState(false);
   const [isPageGroupOpen, setIsPageGroupOpen] = useState(false);
   const [isFaqGroupOpen, setIsFaqGroupOpen] = useState(false);
+  const [isBenefitsGroupOpen, setIsBenefitsGroupOpen] = useState(false);
 
   // 状態管理
   const [licenseMasterList, setLicenseMasterList] = useState([]);
@@ -62,7 +64,8 @@ const App = () => {
 
   // モーダル管理
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState({ id: '', name: '', email: '', prefecture: '' });
+  // 💡 editingUser に certName を追加
+  const [editingUser, setEditingUser] = useState({ id: '', name: '', certName: '', email: '', prefecture: '' });
   const [editingUserLicenses, setEditingUserLicenses] = useState({});
   const [selectedResult, setSelectedResult] = useState(null);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
@@ -76,6 +79,7 @@ const App = () => {
     const allUsers = snapUsers.docs.map(d => ({ id: d.id, ...d.data() }));
     setUsers(allUsers.filter(u => 
       (u.name && u.name.includes(searchWord)) || 
+      (u.certName && u.certName.includes(searchWord)) || 
       (u.email && u.email.includes(searchWord)) || 
       (u.prefecture && u.prefecture.includes(searchWord))
     ));
@@ -116,78 +120,79 @@ const App = () => {
     } catch (e) { alert("削除に失敗しました: " + e.message); }
   };
 
-// モーダルを開く処理
-const openEditUserModal = (user) => {
-  setEditingUser({
-    id: user.id,
-    name: user.name || '',
-    email: user.email || '',
-    password: user.password || '', // パスワードもセット（画面上は非表示）
-    prefecture: user.prefecture || ''
-  });
-  
-  // ライセンス保持状況（has, date含む構造）をセット
-  // 過去データの互換性（booleanだけで入っていた場合）もケアして変換
-  const initialLicenses = {};
-  if (user.licenses) {
-    Object.keys(user.licenses).forEach(key => {
-      const val = user.licenses[key];
-      if (typeof val === 'boolean') {
-        initialLicenses[key] = { has: val, date: '' };
-      } else if (typeof val === 'object' && val !== null) {
-        initialLicenses[key] = { has: !!val.has, date: val.date || '' };
+  // モーダルを開く処理
+  const openEditUserModal = (user) => {
+    setEditingUser({
+      id: user.id,
+      name: user.name || '',
+      certName: user.certName || '', // 💡 修了証用表記名をセット
+      email: user.email || '',
+      password: user.password || '', // パスワードもセット（画面上は非表示）
+      prefecture: user.prefecture || ''
+    });
+    
+    // ライセンス保持状況（has, date含む構造）をセット
+    const initialLicenses = {};
+    if (user.licenses) {
+      Object.keys(user.licenses).forEach(key => {
+        const val = user.licenses[key];
+        if (typeof val === 'boolean') {
+          initialLicenses[key] = { has: val, date: '' };
+        } else if (typeof val === 'object' && val !== null) {
+          initialLicenses[key] = { has: !!val.has, date: val.date || '' };
+        }
+      });
+    }
+    setEditingUserLicenses(initialLicenses);
+    setIsEditModalOpen(true);
+  };
+
+  // モーダル内：ライセンスのチェックボックス変更時
+  const handleLicenseCheckboxChangeInEdit = (licenseId, checked) => {
+    setEditingUserLicenses(prev => ({
+      ...prev,
+      [licenseId]: {
+        ...prev[licenseId],
+        has: checked,
+        date: checked ? (prev[licenseId]?.date || '') : '' // チェックOFF時は日付初期化
       }
-    });
-  }
-  setEditingUserLicenses(initialLicenses);
-  setIsEditModalOpen(true);
-};
+    }));
+  };
 
-// モーダル内：ライセンスのチェックボックス変更時
-const handleLicenseCheckboxChangeInEdit = (licenseId, checked) => {
-  setEditingUserLicenses(prev => ({
-    ...prev,
-    [licenseId]: {
-      ...prev[licenseId],
-      has: checked,
-      date: checked ? (prev[licenseId]?.date || '') : '' // チェックOFF時は日付初期化
+  // モーダル内：ライセンス取得日の変更時
+  const handleLicenseDateChangeInEdit = (licenseId, dateVal) => {
+    setEditingUserLicenses(prev => ({
+      ...prev,
+      [licenseId]: {
+        ...prev[licenseId],
+        date: dateVal
+      }
+    }));
+  };
+
+  // 会員情報の更新保存処理
+  const handleUpdateUser = async () => {
+    if (!editingUser.name || !editingUser.email) {
+      return alert("氏名とメールアドレスは必須です");
     }
-  }));
-};
 
-// モーダル内：ライセンス取得日の変更時
-const handleLicenseDateChangeInEdit = (licenseId, dateVal) => {
-  setEditingUserLicenses(prev => ({
-    ...prev,
-    [licenseId]: {
-      ...prev[licenseId],
-      date: dateVal
+    try {
+      await updateDoc(doc(db, "users", editingUser.id), {
+        name: editingUser.name,
+        certName: editingUser.certName || '', // 💡 修了証用表記名を更新対象に追加
+        email: editingUser.email,
+        password: editingUser.password, // パスワードも更新対象
+        prefecture: editingUser.prefecture,
+        licenses: editingUserLicenses,
+        updatedAt: serverTimestamp()
+      });
+      setIsEditModalOpen(false);
+      fetchData(); // データを再取得して一覧表示を更新
+      alert("会員情報を更新しました");
+    } catch (e) {
+      alert("更新失敗: " + e.message);
     }
-  }));
-};
-
-// 会員情報の更新保存処理
-const handleUpdateUser = async () => {
-  if (!editingUser.name || !editingUser.email) {
-    return alert("氏名とメールアドレスは必須です");
-  }
-
-  try {
-    await updateDoc(doc(db, "users", editingUser.id), {
-      name: editingUser.name,
-      email: editingUser.email,
-      password: editingUser.password, // パスワードも更新対象
-      prefecture: editingUser.prefecture,
-      licenses: editingUserLicenses,
-      updatedAt: serverTimestamp()
-    });
-    setIsEditModalOpen(false);
-    fetchData(); // データを再取得して一覧表示を更新
-    alert("会員情報を更新しました");
-  } catch (e) {
-    alert("更新失敗: " + e.message);
-  }
-};
+  };
 
   const openResultDetailModal = (result) => { setSelectedResult(result); setIsResultModalOpen(true); };
 
@@ -243,6 +248,15 @@ const handleUpdateUser = async () => {
           </div>
         )}
 
+        <div style={styles.groupHeader} onClick={() => setIsBenefitsGroupOpen(!isBenefitsGroupOpen)}>
+          会員特典管理 <span>{isBenefitsGroupOpen ? '▼' : '▶'}</span>
+        </div>
+        {isBenefitsGroupOpen && (
+          <div>
+            <NavLink to="/benefits" style={styles.navItemLink(true)}>└ 特典一覧・編集</NavLink>
+          </div>
+        )}
+
         <div style={styles.groupHeader} onClick={() => setIsFaqGroupOpen(!isFaqGroupOpen)}>FAQ管理 <span>{isFaqGroupOpen ? '▼' : '▶'}</span></div>
         {isFaqGroupOpen && (
           <div>
@@ -282,6 +296,7 @@ const handleUpdateUser = async () => {
           <Route path="/users" element={<UserListScreen users={users} totalUserCount={totalUserCount} searchWord={searchWord} setSearchWord={setSearchWord} licenseMasterList={licenseMasterList} openEditUserModal={openEditUserModal} />} />
           <Route path="/users/register" element={<UserRegScreen db={db} licenseMasterList={licenseMasterList} setActiveTab={(path) => navigate(`/${path}`)} fetchData={fetchData} />} />
           <Route path="/licenses" element={<LicenseMasterScreen db={db} storage={storage} licenseMasterList={licenseMasterList} setLicenseMasterList={setLicenseMasterList} fetchData={fetchData} />} />
+          <Route path="/benefits" element={<AdminBenefitsScreen db={db} />} />
           <Route path="/faqmanager" element={<AdminFaqManager db={db} />} />
           <Route path="/news" element={<NewsMainScreen db={db} newsList={newsList} licenseMasterList={licenseMasterList} fetchData={fetchData} handleDelete={handleDelete} />} />
           <Route path="/news/instagram" element={<NewsInstaScreen db={db} instaList={instaList} fetchData={fetchData} handleDelete={handleDelete} />} />
@@ -294,118 +309,135 @@ const handleUpdateUser = async () => {
         </Routes>
       </div>
 
-{/* 会員編集モーダル */}
-{isEditModalOpen && (
-  <div style={styles.modalOverlay}>
-    <div style={styles.modalContent}>
-      <h2 style={{ marginTop: 0, marginBottom: '20px' }}>会員情報の編集</h2>
-      
-      {/* 氏名 */}
-      <div style={{ marginBottom: '15px' }}>
-        <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>氏名 <span style={{ color: 'red' }}>*</span></label>
-        <input 
-          type="text" 
-          style={styles.input} 
-          value={editingUser.name} 
-          onChange={e => setEditingUser({ ...editingUser, name: e.target.value })} 
-          placeholder="氏名"
-        />
-      </div>
+      {/* 会員編集モーダル */}
+      {isEditModalOpen && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <h2 style={{ marginTop: 0, marginBottom: '20px' }}>会員情報の編集</h2>
+            
+            {/* 氏名 */}
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>氏名 <span style={{ color: 'red' }}>*</span></label>
+              <input 
+                type="text" 
+                style={styles.input} 
+                value={editingUser.name} 
+                onChange={e => setEditingUser({ ...editingUser, name: e.target.value })} 
+                placeholder="氏名"
+              />
+            </div>
 
-      {/* メールアドレス */}
-      <div style={{ marginBottom: '15px' }}>
-        <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>メールアドレス <span style={{ color: 'red' }}>*</span></label>
-        <input 
-          type="email" 
-          style={styles.input} 
-          value={editingUser.email} 
-          onChange={e => setEditingUser({ ...editingUser, email: e.target.value })} 
-          placeholder="メールアドレス"
-        />
-      </div>
+            {/* 💡 追加: 修了証用表記名 */}
+            <div style={{ background: '#ebf8ff', padding: '12px', borderRadius: '8px', marginBottom: '15px', border: '1px solid #bee3f8' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px', color: '#2b6cb0' }}>
+                📄 修了証用表記名（PDF印字用）
+              </label>
+              <input 
+                type="text" 
+                style={{ ...styles.input, marginBottom: '5px' }} 
+                value={editingUser.certName} 
+                onChange={e => setEditingUser({ ...editingUser, certName: e.target.value })} 
+                placeholder="例: PET TARO（空欄の場合は上記の氏名が印字されます）"
+              />
+              <span style={{ fontSize: '0.75rem', color: '#4a5568' }}>
+                ※ マイページでダウンロードされる修了証PDF等に表示される表記名です。
+              </span>
+            </div>
 
-      {/* パスワード（●で表示される型） */}
-      <div style={{ marginBottom: '15px' }}>
-        <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>パスワード</label>
-        <input 
-          type="password" 
-          style={styles.input} 
-          value={editingUser.password} 
-          onChange={e => setEditingUser({ ...editingUser, password: e.target.value })} 
-          placeholder="新しいパスワード（変更する場合に入力）"
-        />
-      </div>
+            {/* メールアドレス */}
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>メールアドレス <span style={{ color: 'red' }}>*</span></label>
+              <input 
+                type="email" 
+                style={styles.input} 
+                value={editingUser.email} 
+                onChange={e => setEditingUser({ ...editingUser, email: e.target.value })} 
+                placeholder="メールアドレス"
+              />
+            </div>
 
-      {/* 都道府県 */}
-      <div style={{ marginBottom: '15px' }}>
-        <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>都道府県</label>
-        <input 
-          type="text" 
-          style={styles.input} 
-          value={editingUser.prefecture} 
-          onChange={e => setEditingUser({ ...editingUser, prefecture: e.target.value })} 
-          placeholder="都道府県（例: 東京都）"
-        />
-      </div>
+            {/* パスワード（●で表示される型） */}
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>パスワード</label>
+              <input 
+                type="password" 
+                style={styles.input} 
+                value={editingUser.password} 
+                onChange={e => setEditingUser({ ...editingUser, password: e.target.value })} 
+                placeholder="新しいパスワード（変更する場合に入力）"
+              />
+            </div>
 
-      {/* 保持ライセンス・取得日 */}
-      <div style={{ marginBottom: '20px' }}>
-        <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '10px' }}>保有ライセンス・取得日</label>
-        <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0', maxHeight: '220px', overflowY: 'auto' }}>
-          {licenseMasterList.length === 0 ? (
-            <p style={{ color: '#a0aec0', margin: 0, fontSize: '0.85rem' }}>登録されているライセンスがありません</p>
-          ) : (
-            licenseMasterList.map(lic => {
-              const userLic = editingUserLicenses[lic.id] || { has: false, date: '' };
-              return (
-                <div key={lic.id} style={{ marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px dashed #e2e8f0' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>
-                    <input 
-                      type="checkbox"
-                      checked={!!userLic.has}
-                      onChange={e => handleLicenseCheckboxChangeInEdit(lic.id, e.target.checked)}
-                      style={{ marginRight: '8px' }}
-                    />
-                    {lic.name || lic.title}
-                  </label>
-                  
-                  {/* チェックが入っている時だけ取得日カレンダーを表示 */}
-                  {userLic.has && (
-                    <div style={{ marginLeft: '25px', marginTop: '6px' }}>
-                      <label style={{ fontSize: '0.75rem', color: '#718096', display: 'block', marginBottom: '2px' }}>取得日:</label>
-                      <input 
-                        type="date" 
-                        value={userLic.date || ''} 
-                        onChange={e => handleLicenseDateChangeInEdit(lic.id, e.target.value)}
-                        style={{ ...styles.input, marginBottom: 0, padding: '6px 10px', fontSize: '0.85rem', width: 'auto' }}
-                      />
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
+            {/* 都道府県 */}
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>都道府県</label>
+              <input 
+                type="text" 
+                style={styles.input} 
+                value={editingUser.prefecture} 
+                onChange={e => setEditingUser({ ...editingUser, prefecture: e.target.value })} 
+                placeholder="都道府県（例: 東京都）"
+              />
+            </div>
+
+            {/* 保持ライセンス・取得日 */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '10px' }}>保有ライセンス・取得日</label>
+              <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0', maxHeight: '220px', overflowY: 'auto' }}>
+                {licenseMasterList.length === 0 ? (
+                  <p style={{ color: '#a0aec0', margin: 0, fontSize: '0.85rem' }}>登録されているライセンスがありません</p>
+                ) : (
+                  licenseMasterList.map(lic => {
+                    const userLic = editingUserLicenses[lic.id] || { has: false, date: '' };
+                    return (
+                      <div key={lic.id} style={{ marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px dashed #e2e8f0' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                          <input 
+                            type="checkbox"
+                            checked={!!userLic.has}
+                            onChange={e => handleLicenseCheckboxChangeInEdit(lic.id, e.target.checked)}
+                            style={{ marginRight: '8px' }}
+                          />
+                          {lic.name || lic.title}
+                        </label>
+                        
+                        {/* チェックが入っている時だけ取得日カレンダーを表示 */}
+                        {userLic.has && (
+                          <div style={{ marginLeft: '25px', marginTop: '6px' }}>
+                            <label style={{ fontSize: '0.75rem', color: '#718096', display: 'block', marginBottom: '2px' }}>取得日:</label>
+                            <input 
+                              type="date" 
+                              value={userLic.date || ''} 
+                              onChange={e => handleLicenseDateChangeInEdit(lic.id, e.target.value)}
+                              style={{ ...styles.input, marginBottom: 0, padding: '6px 10px', fontSize: '0.85rem', width: 'auto' }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* ボタンエリア */}
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px' }}>
+              <button 
+                onClick={handleUpdateUser}
+                style={{ background: '#3182ce', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+              >
+                保存する
+              </button>
+              <button 
+                onClick={() => setIsEditModalOpen(false)}
+                style={{ background: '#e2e8f0', color: '#4a5568', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer' }}
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-
-      {/* ボタンエリア */}
-      <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px' }}>
-        <button 
-          onClick={handleUpdateUser}
-          style={{ background: '#3182ce', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
-        >
-          保存する
-        </button>
-        <button 
-          onClick={() => setIsEditModalOpen(false)}
-          style={{ background: '#e2e8f0', color: '#4a5568', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer' }}
-        >
-          キャンセル
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+      )}
 
       {/* 診断詳細モーダル */}
       {isResultModalOpen && selectedResult && (

@@ -32,7 +32,15 @@ const UserListScreen = ({ users, totalUserCount, searchWord, setSearchWord, lice
             {users.map(u => (
               <tr key={u.id}>
                 <td style={styles.td}>{u.userNum}</td>
-                <td style={styles.td}><strong>{u.name}</strong></td>
+                <td style={styles.td}>
+                  <strong>{u.name}</strong>
+                  {/* 💡 修了証用名義（certName）が登録されている場合のみ表示 */}
+                  {u.certName && (
+                    <div style={{ fontSize: '0.75rem', color: '#3182ce', marginTop: '3px' }}>
+                      📄 修了証名義: {u.certName}
+                    </div>
+                  )}
+                </td>
                 <td style={styles.td}>{u.email}</td>
                 <td style={styles.td}>{u.prefecture}</td>
                 <td style={styles.td}>

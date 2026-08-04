@@ -7,7 +7,8 @@ const styles = {
 };
 
 const UserRegScreen = ({ db, licenseMasterList, setActiveTab, fetchData }) => {
-  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', prefecture: '' });
+  // 💡 certName を追加
+  const [newUser, setNewUser] = useState({ name: '', certName: '', email: '', password: '', prefecture: '' });
   const [newUserLicenses, setNewUserLicenses] = useState({});
 
   const handleNewUserLicenseCheckbox = (id, checked) => {
@@ -19,7 +20,7 @@ const UserRegScreen = ({ db, licenseMasterList, setActiveTab, fetchData }) => {
   };
 
   const handleRegisterUser = async () => {
-    const { name, email, password, prefecture } = newUser;
+    const { name, certName, email, password, prefecture } = newUser;
     if (!name || !email || !password) return alert("氏名、メール、パスワードは必須です");
     try {
       const counterRef = doc(db, "settings", "counters");
@@ -33,10 +34,19 @@ const UserRegScreen = ({ db, licenseMasterList, setActiveTab, fetchData }) => {
           transaction.set(counterRef, { userCount: 1 });
         }
         transaction.set(doc(db, "users", String(userNum)), {
-          userNum, name, email, password, prefecture, needsPasswordSetup: true, licenses: newUserLicenses, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+          userNum, 
+          name, 
+          certName: certName || '', // 💡 Firestoreに保存
+          email, 
+          password, 
+          prefecture, 
+          needsPasswordSetup: true, 
+          licenses: newUserLicenses, 
+          createdAt: serverTimestamp(), 
+          updatedAt: serverTimestamp()
         });
       });
-      setNewUser({ name: '', email: '', password: '', prefecture: '' });
+      setNewUser({ name: '', certName: '', email: '', password: '', prefecture: '' });
       setNewUserLicenses({});
       setActiveTab('user-list');
       fetchData();
@@ -49,9 +59,22 @@ const UserRegScreen = ({ db, licenseMasterList, setActiveTab, fetchData }) => {
       <h1>会員新規登録</h1>
       <div style={styles.card}>
         <h3>基本情報</h3>
-        <input type="text" placeholder="氏名" style={styles.input} value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} />
-        <input type="email" placeholder="メールアドレス" style={styles.input} value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
-        <input type="password" placeholder="パスワード" style={styles.input} value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
+        <input type="text" placeholder="氏名 *" style={styles.input} value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} />
+        
+        {/* 💡 修了証用表記名の入力欄を追加 */}
+        <div style={{ marginBottom: '15px' }}>
+          <input 
+            type="text" 
+            placeholder="修了証用表記名（例：PET TARO ※空欄の場合は氏名が使われます）" 
+            style={{ ...styles.input, marginBottom: '5px' }} 
+            value={newUser.certName} 
+            onChange={e => setNewUser({ ...newUser, certName: e.target.value })} 
+          />
+          <span style={{ fontSize: '0.75rem', color: '#718096' }}>※ 修了証PDFに印字される氏名です。指定がない場合は上記の「氏名」が反映されます。</span>
+        </div>
+
+        <input type="email" placeholder="メールアドレス *" style={styles.input} value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
+        <input type="password" placeholder="パスワード *" style={styles.input} value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
         <input type="text" placeholder="都道府県" style={styles.input} value={newUser.prefecture} onChange={e => setNewUser({...newUser, prefecture: e.target.value})} />
         
         <h3>ライセンス指定</h3>
