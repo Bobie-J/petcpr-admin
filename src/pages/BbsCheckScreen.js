@@ -14,66 +14,168 @@ const styles = {
 
 const BbsCheckScreen = ({ db, storage, bbsList, bbsSearchWord, setBbsSearchWord, fetchData }) => {
   const [bbsContent, setBbsContent] = useState('');
-  const [bbsFile, setBbsFile] = useState(null);
+  // 💡 画像を配列で管理（最大3枚）
+  const [bbsFiles, setBbsFiles] = useState([]);
   const [isBbsUploading, setIsBbsUploading] = useState(false);
   const [editingBbsItem, setEditingBbsItem] = useState(null);
   const [isBbsEditModalOpen, setIsBbsEditModalOpen] = useState(false);
-  const [editBbsFile, setEditBbsFile] = useState(null);
+  const [editBbsFiles, setEditBbsFiles] = useState([]);
 
+  // 新規投稿時の画像選択ハンドラー（最大3枚制御＆サイズチェック）
+  const handleFileChange = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    if (selectedFiles.length > 3) {
+      alert("画像は最大3枚まで選択可能です。");
+      e.target.value = '';
+      setBbsFiles([]);
+      return;
+    }
+    const overSize = selectedFiles.some(file => file.size > 2100000);
+    if (overSize) {
+      alert("エラー: 2MBを超える画像が含まれています。");
+      e.target.value = '';
+      setBbsFiles([]);
+      return;
+    }
+    setBbsFiles(selectedFiles);
+  };
+
+  // 編集時の画像選択ハンドラー
+  const handleEditFileChange = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    if (selectedFiles.length > 3) {
+      alert("画像は最大3枚まで選択可能です。");
+      e.target.value = '';
+      setEditBbsFiles([]);
+      return;
+    }
+    const overSize = selectedFiles.some(file => file.size > 2100000);
+    if (overSize) {
+      alert("エラー: 2MBを超える画像が含まれています。");
+      e.target.value = '';
+      setEditBbsFiles([]);
+      return;
+    }
+    setEditBbsFiles(selectedFiles);
+  };
+
+  // 管理者新規投稿処理
   const handlePostBbsAdmin = async () => {
     if (!bbsContent.trim()) return alert("投稿内容を入力してください");
-    if (bbsFile && bbsFile.size > 2100000) return alert("エラー: 画像ファイルの容量が2MBを超えています。");
     setIsBbsUploading(true);
     try {
-      let imageUrl = '';
-      let storagePath = '';
-      if (bbsFile) {
-        storagePath = `bbs_images/${Date.now()}_${bbsFile.name}`;
-        const fileRef = ref(storage, storagePath);
-        await uploadBytes(fileRef, bbsFile);
-        imageUrl = await getDownloadURL(fileRef);
+      const imageUrls = [];
+      const storagePaths = [];
+
+      // 💡 複数画像をループでStorageにアップロード
+      for (const file of bbsFiles) {
+        const path = `bbs_images/${Date.now()}_${file.name}`;
+        const fileRef = ref(storage, path);
+        await uploadBytes(fileRef, file);
+        const url = await getDownloadURL(fileRef);
+        imageUrls.push(url);
+        storagePaths.push(path);
       }
-      await addDoc(collection(db, "bbs"), { userId: "admin", userName: "管理者", content: bbsContent, imageUrl: imageUrl, storagePath: storagePath, createdAt: serverTimestamp() });
+
+      await addDoc(collection(db, "bbs"), { 
+        userId: "admin", 
+        userName: "管理者", 
+        content: bbsContent, 
+        imageUrls: imageUrls, 
+        storagePaths: storagePaths, 
+        createdAt: serverTimestamp() 
+      });
+
       setBbsContent('');
-      setBbsFile(null);
+      setBbsFiles([]);
       const fileInput = document.getElementById('bbs-file-input');
       if (fileInput) fileInput.value = '';
       fetchData();
       alert("管理者として掲示板に投稿しました");
-    } catch (e) { alert("投稿に失敗しました: " + e.message); } finally { setIsBbsUploading(false); }
+    } catch (e) { 
+      alert("投稿に失敗しました: " + e.message); 
+    } finally { 
+      setIsBbsUploading(false); 
+    }
   };
 
-  const openEditBbsModal = (item) => { setEditingBbsItem(item); setEditBbsFile(null); setIsBbsEditModalOpen(true); };
+  const openEditBbsModal = (item) => { 
+    setEditingBbsItem(item); 
+    setEditBbsFiles([]); 
+    setIsBbsEditModalOpen(true); 
+  };
 
+  // 編集更新処理
   const handleUpdateBbsItem = async () => {
     if (!editingBbsItem.content.trim()) return alert("内容を入力してください");
-    if (editBbsFile && editBbsFile.size > 2100000) return alert("エラー: 画像が2MBを超えています。");
     setIsBbsUploading(true);
     try {
-      let finalImageUrl = editingBbsItem.imageUrl || '';
-      let finalStoragePath = editingBbsItem.storagePath || '';
-      if (editBbsFile) {
-        if (editingBbsItem.storagePath) { try { await deleteObject(ref(storage, editingBbsItem.storagePath)); } catch (err) {} }
-        finalStoragePath = `bbs_images/${Date.now()}_${editBbsFile.name}`;
-        const fileRef = ref(storage, finalStoragePath);
-        await uploadBytes(fileRef, editBbsFile);
-        finalImageUrl = await getDownloadURL(fileRef);
+      let finalImageUrls = editingBbsItem.imageUrls || (editingBbsItem.imageUrl ? [editingBbsItem.imageUrl] : []);
+      let finalStoragePaths = editingBbsItem.storagePaths || (editingBbsItem.storagePath ? [editingBbsItem.storagePath] : []);
+
+      // 💡 新しい画像ファイル群が選択されている場合は既存画像を消して差替え
+      if (editBbsFiles.length > 0) {
+        // 旧画像の削除処理
+        for (const path of finalStoragePaths) {
+          if (path) { try { await deleteObject(ref(storage, path)); } catch (err) {} }
+        }
+
+        finalImageUrls = [];
+        finalStoragePaths = [];
+
+        // 新画像のアップロード
+        for (const file of editBbsFiles) {
+          const path = `bbs_images/${Date.now()}_${file.name}`;
+          const fileRef = ref(storage, path);
+          await uploadBytes(fileRef, file);
+          const url = await getDownloadURL(fileRef);
+          finalImageUrls.push(url);
+          finalStoragePaths.push(path);
+        }
       }
-      await updateDoc(doc(db, "bbs", editingBbsItem.id), { content: editingBbsItem.content, imageUrl: finalImageUrl, storagePath: finalStoragePath, updatedAt: serverTimestamp() });
+
+      await updateDoc(doc(db, "bbs", editingBbsItem.id), { 
+        content: editingBbsItem.content, 
+        imageUrls: finalImageUrls, 
+        storagePaths: finalStoragePaths, 
+        updatedAt: serverTimestamp() 
+      });
+
       setIsBbsEditModalOpen(false);
       fetchData();
       alert("投稿を修正しました");
-    } catch (e) { alert("修正失敗: " + e.message); } finally { setIsBbsUploading(false); }
+    } catch (e) { 
+      alert("修正失敗: " + e.message); 
+    } finally { 
+      setIsBbsUploading(false); 
+    }
   };
 
+  // 投稿削除処理（紐づく画像全削除）
   const handleDeleteBbsItem = async (item) => {
     if (!window.confirm("この投稿を削除しますか？")) return;
     try {
-      if (item.storagePath) { await deleteObject(ref(storage, item.storagePath)).catch(() => {}); }
+      const targetPaths = item.storagePaths || (item.storagePath ? [item.storagePath] : []);
+      for (const path of targetPaths) {
+        if (path) { await deleteObject(ref(storage, path)).catch(() => {}); }
+      }
       await deleteDoc(doc(db, "bbs", item.id));
       fetchData();
       alert("投稿を完全に削除しました");
-    } catch (e) { alert("削除失敗: " + e.message); }
+    } catch (e) { 
+      alert("削除失敗: " + e.message); 
+    }
+  };
+
+  // 画像配列を安全に取得する補助関数（新旧互換性保持）
+  const getItemImages = (item) => {
+    if (item.imageUrls && Array.isArray(item.imageUrls) && item.imageUrls.length > 0) {
+      return item.imageUrls;
+    }
+    if (item.imageUrl) {
+      return [item.imageUrl];
+    }
+    return [];
   };
 
   return (
@@ -82,28 +184,46 @@ const BbsCheckScreen = ({ db, storage, bbsList, bbsSearchWord, setBbsSearchWord,
       <div style={styles.card}>
         <h3>📢 管理者として掲示板に新規投稿</h3>
         <textarea placeholder="メッセージ..." style={styles.textarea} value={bbsContent} onChange={e => setBbsContent(e.target.value)} />
-        <div style={{display:'flex', alignItems:'center', gap:'15px', marginBottom:'15px'}}>
-          <input type="file" id="bbs-file-input" accept="image/*" onChange={e => setBbsFile(e.target.files[0])} />
+        <div style={{display:'flex', flexDirection:'column', gap:'5px', marginBottom:'15px'}}>
+          <input type="file" id="bbs-file-input" accept="image/*" multiple onChange={handleFileChange} />
+          <span style={{fontSize:'12px', color:'#718096'}}>※画像は最大3枚まで（1枚あたり2MB以内）</span>
         </div>
-        <button onClick={handlePostBbsAdmin} disabled={isBbsUploading} style={{ padding: '12px 24px', background: '#319795', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor:'pointer' }}>投稿する</button>
+        <button onClick={handlePostBbsAdmin} disabled={isBbsUploading} style={{ padding: '12px 24px', background: '#319795', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor:'pointer' }}>
+          {isBbsUploading ? "投稿中..." : "投稿する"}
+        </button>
       </div>
 
       <div style={styles.card}>
         <h3>投稿の監視・編集・削除</h3>
         <input type="text" placeholder="リアルタイム検索..." value={bbsSearchWord} onChange={e => setBbsSearchWord(e.target.value)} style={styles.input} />
-        {bbsList.map(item => (
-          <div key={item.id} style={{borderBottom:'1px solid #edf2f7', padding:'20px 0', display:'flex', gap:'20px'}}>
-            {item.imageUrl && <img src={item.imageUrl} style={{width:'100px', height:'100px', objectFit:'cover', borderRadius:'8px'}} alt="BBS Post" />}
-            <div style={{flex:1}}>
-              <div style={{display:'flex', justifyContent:'space-between'}}><span style={{fontWeight:'bold'}}>{item.userName}</span></div>
-              <p style={{whiteSpace:'pre-wrap'}}>{item.content}</p>
-              <div style={{display:'flex', gap:'15px'}}>
-                <button style={styles.btnEdit} onClick={() => openEditBbsModal(item)}>編集</button>
-                <button style={styles.btnDelete} onClick={() => handleDeleteBbsItem(item)}>削除</button>
+        {bbsList.map(item => {
+          const images = getItemImages(item);
+          return (
+            <div key={item.id} style={{borderBottom:'1px solid #edf2f7', padding:'20px 0', display:'flex', gap:'20px'}}>
+              {/* 💡 複数画像を横並びで表示 */}
+              {images.length > 0 && (
+                <div style={{display:'flex', gap:'8px', flexShrink: 0}}>
+                  {images.map((imgUrl, idx) => (
+                    <img 
+                      key={idx} 
+                      src={imgUrl} 
+                      style={{width:'80px', height:'80px', objectFit:'cover', borderRadius:'8px', border:'1px solid #e2e8f0'}} 
+                      alt={`BBS Post ${idx + 1}`} 
+                    />
+                  ))}
+                </div>
+              )}
+              <div style={{flex:1}}>
+                <div style={{display:'flex', justifyContent:'space-between'}}><span style={{fontWeight:'bold'}}>{item.userName}</span></div>
+                <p style={{whiteSpace:'pre-wrap'}}>{item.content}</p>
+                <div style={{display:'flex', gap:'15px'}}>
+                  <button style={styles.btnEdit} onClick={() => openEditBbsModal(item)}>編集</button>
+                  <button style={styles.btnDelete} onClick={() => handleDeleteBbsItem(item)}>削除</button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {isBbsEditModalOpen && (
@@ -111,10 +231,19 @@ const BbsCheckScreen = ({ db, storage, bbsList, bbsSearchWord, setBbsSearchWord,
           <div style={styles.modalContent}>
             <h2>掲示板投稿の編集</h2>
             <textarea style={styles.textarea} value={editingBbsItem.content} onChange={e => setEditingBbsItem({...editingBbsItem, content: e.target.value})} />
-            <input type="file" accept="image/*" onChange={e => setEditBbsFile(e.target.files[0])} style={{marginBottom:'15px'}} />
-            <div>
-              <button onClick={handleUpdateBbsItem} disabled={isBbsUploading}>更新保存</button>
-              <button onClick={() => setIsBbsEditModalOpen(false)} style={{marginLeft:'10px'}}>キャンセル</button>
+            
+            <div style={{marginBottom:'15px'}}>
+              <label style={{display:'block', fontSize:'12px', fontWeight:'bold', marginBottom:'5px'}}>新しい画像に変更する場合（最大3枚）:</label>
+              <input type="file" accept="image/*" multiple onChange={handleEditFileChange} />
+            </div>
+
+            <div style={{display:'flex', gap:'10px'}}>
+              <button onClick={handleUpdateBbsItem} disabled={isBbsUploading} style={{padding:'8px 16px', background:'#3182ce', color:'white', border:'none', borderRadius:'6px', cursor:'pointer'}}>
+                {isBbsUploading ? "保存中..." : "更新保存"}
+              </button>
+              <button onClick={() => setIsBbsEditModalOpen(false)} style={{padding:'8px 16px', background:'#e2e8f0', color:'#2d3748', border:'none', borderRadius:'6px', cursor:'pointer'}}>
+                キャンセル
+              </button>
             </div>
           </div>
         </div>

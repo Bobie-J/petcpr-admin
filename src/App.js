@@ -18,6 +18,7 @@ import BbsCheckScreen from './pages/BbsCheckScreen';
 import DiagResultsScreen from './pages/DiagResultsScreen';
 import DiagQuestionsScreen from './pages/DiagQuestionsScreen';
 import DiagSettingsScreen from './pages/DiagSettingsScreen';
+import AdminFaqManager from './pages/AdminFaqManager';
 
 // --- Firebase設定 ---
 const firebaseConfig = {
@@ -38,12 +39,13 @@ const App = () => {
   const navigate = useNavigate();
 
   // サイドバーの開閉状態
-  const [isUserGroupOpen, setIsUserGroupOpen] = useState(true);
-  const [isLicenseGroupOpen, setIsLicenseGroupOpen] = useState(true);
-  const [isNewsGroupOpen, setIsNewsGroupOpen] = useState(true);
-  const [isBbsGroupOpen, setIsBbsGroupOpen] = useState(true);
-  const [isDiagGroupOpen, setIsDiagGroupOpen] = useState(true);
-  const [isPageGroupOpen, setIsPageGroupOpen] = useState(true);
+  const [isUserGroupOpen, setIsUserGroupOpen] = useState(false);
+  const [isLicenseGroupOpen, setIsLicenseGroupOpen] = useState(false);
+  const [isNewsGroupOpen, setIsNewsGroupOpen] = useState(false);
+  const [isBbsGroupOpen, setIsBbsGroupOpen] = useState(false);
+  const [isDiagGroupOpen, setIsDiagGroupOpen] = useState(false);
+  const [isPageGroupOpen, setIsPageGroupOpen] = useState(false);
+  const [isFaqGroupOpen, setIsFaqGroupOpen] = useState(false);
 
   // 状態管理
   const [licenseMasterList, setLicenseMasterList] = useState([]);
@@ -217,7 +219,7 @@ const handleUpdateUser = async () => {
     <div style={styles.container}>
       {/* サイドバー */}
       <div style={styles.sidebar}>
-        <h2 style={{ padding: '0 25px', marginBottom: '40px', color: '#63b3ed' }}>PET CPR</h2>
+        <h2 style={{ padding: '0 25px', marginBottom: '40px', color: '#63b3ed' }}>PET CPR管理画面</h2>
         
         <div style={styles.groupHeader} onClick={() => setIsPageGroupOpen(!isPageGroupOpen)}>サイト構成・ページ管理 <span>{isPageGroupOpen ? '▼' : '▶'}</span></div>
         {isPageGroupOpen && (
@@ -238,6 +240,13 @@ const handleUpdateUser = async () => {
         {isLicenseGroupOpen && (
           <div>
             <NavLink to="/licenses" style={styles.navItemLink(true)}>└ ライセンス・修了証管理</NavLink>
+          </div>
+        )}
+
+        <div style={styles.groupHeader} onClick={() => setIsFaqGroupOpen(!isFaqGroupOpen)}>FAQ管理 <span>{isFaqGroupOpen ? '▼' : '▶'}</span></div>
+        {isFaqGroupOpen && (
+          <div>
+            <NavLink to="/faqmanager" style={styles.navItemLink(true)}>└ FAQ管理</NavLink>
           </div>
         )}
 
@@ -273,6 +282,7 @@ const handleUpdateUser = async () => {
           <Route path="/users" element={<UserListScreen users={users} totalUserCount={totalUserCount} searchWord={searchWord} setSearchWord={setSearchWord} licenseMasterList={licenseMasterList} openEditUserModal={openEditUserModal} />} />
           <Route path="/users/register" element={<UserRegScreen db={db} licenseMasterList={licenseMasterList} setActiveTab={(path) => navigate(`/${path}`)} fetchData={fetchData} />} />
           <Route path="/licenses" element={<LicenseMasterScreen db={db} storage={storage} licenseMasterList={licenseMasterList} setLicenseMasterList={setLicenseMasterList} fetchData={fetchData} />} />
+          <Route path="/faqmanager" element={<AdminFaqManager db={db} />} />
           <Route path="/news" element={<NewsMainScreen db={db} newsList={newsList} licenseMasterList={licenseMasterList} fetchData={fetchData} handleDelete={handleDelete} />} />
           <Route path="/news/instagram" element={<NewsInstaScreen db={db} instaList={instaList} fetchData={fetchData} handleDelete={handleDelete} />} />
           <Route path="/bbs" element={<BbsCheckScreen db={db} storage={storage} bbsList={bbsList} bbsSearchWord={bbsSearchWord} setBbsSearchWord={setBbsSearchWord} fetchData={fetchData} />} />

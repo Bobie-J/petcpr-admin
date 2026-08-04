@@ -7,7 +7,7 @@ import {
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 
-// --- FirebaseÝ’è ---
+// --- Firebaseï¿½Ý’ï¿½ ---
 const firebaseConfig = {
   apiKey: "AIzaSyDUlCG0Nh_Yw0zquCJ5QT43DNWIPNr_DiQ",
   authDomain: "pet-cpr.firebaseapp.com",
@@ -30,7 +30,7 @@ const AdminApp = () => {
   const [instaUrl, setInstaUrl] = useState(''); 
   const [instaLinks, setInstaLinks] = useState([]); 
 
-  // --- ƒf[ƒ^Žæ“¾ ---
+  // --- ï¿½fï¿½[ï¿½^ï¿½æ“¾ ---
   const fetchNews = async () => {
     const q = query(collection(db, "news"), orderBy("publishedAt", "desc"));
     const snap = await getDocs(q);
@@ -44,20 +44,20 @@ const AdminApp = () => {
 
   useEffect(() => { fetchNews(); fetchInstaLinks(); }, []);
 
-  // --- NEWS•Û‘¶ ---
+  // --- NEWSï¿½Û‘ï¿½ ---
   const handleSaveNews = async () => {
-    if (!title || !content || !publishDate) return alert("“ü—Í‚ª•s‘«‚µ‚Ä‚¢‚Ü‚·");
+    if (!title || !content || !publishDate) return alert("ï¿½ï¿½ï¿½Í‚ï¿½ï¿½sï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½Ü‚ï¿½");
     try {
       await addDoc(collection(db, "news"), {
         title, content, publishedAt: new Date(publishDate), createdAt: serverTimestamp()
       });
-      alert("NEWS‚ð“Še‚µ‚Ü‚µ‚½");
+      alert("NEWSï¿½ð“Šeï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½");
       setTitle(''); setContent(''); setPublishDate('');
       fetchNews();
-    } catch (e) { alert("ƒGƒ‰[‚ª”­¶‚µ‚Ü‚µ‚½"); }
+    } catch (e) { alert("ï¿½Gï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½"); }
   };
 
-  // --- Instagram•Û‘¶Eíœ ---
+  // --- Instagramï¿½Û‘ï¿½ï¿½Eï¿½íœ ---
   const handleSaveInsta = async () => {
     if (!instaUrl) return;
     const newLinks = [instaUrl, ...instaLinks];
@@ -67,13 +67,13 @@ const AdminApp = () => {
   };
 
   const handleDeleteInsta = async (idx) => {
-    if(!window.confirm("‚±‚ÌƒŠƒ“ƒN‚ðíœ‚µ‚Ü‚·‚©H")) return;
+    if(!window.confirm("ï¿½ï¿½ï¿½Ìƒï¿½ï¿½ï¿½ï¿½Nï¿½ï¿½ï¿½íœï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½ï¿½H")) return;
     const newLinks = instaLinks.filter((_, i) => i !== idx);
     await setDoc(doc(db, "settings", "instagram"), { urls: newLinks });
     setInstaLinks(newLinks);
   };
 
-  // --- ƒXƒ^ƒCƒ‹’è‹`iƒR[ƒh‚ð“\‚é‚¾‚¯‚Å”½‰f‚³‚¹‚é‚½‚ßj ---
+  // --- ï¿½Xï¿½^ï¿½Cï¿½ï¿½ï¿½ï¿½`ï¿½iï¿½Rï¿½[ï¿½hï¿½ï¿½\ï¿½é‚¾ï¿½ï¿½ï¿½Å”ï¿½ï¿½fï¿½ï¿½ï¿½ï¿½ï¿½é‚½ï¿½ßj ---
   const styles = {
     container: { display: 'flex', minHeight: '100vh', background: '#f0f2f5', fontFamily: 'sans-serif' },
     sidebar: { width: '260px', background: '#1c1c1c', color: 'white', padding: '30px 20px' },
@@ -90,32 +90,32 @@ const AdminApp = () => {
 
   return (
     <div style={styles.container}>
-      {/* ¶‘¤Fƒiƒrƒƒjƒ…[ */}
+      {/* ï¿½ï¿½ï¿½ï¿½ï¿½Fï¿½iï¿½rï¿½ï¿½ï¿½jï¿½ï¿½ï¿½[ */}
       <div style={styles.sidebar}>
-        <h2 style={{ fontSize: '1.2rem', marginBottom: '40px' }}>ŠÇ—ƒpƒlƒ‹</h2>
-        <div style={styles.navItem(activeTab === 'news')} onClick={() => setActiveTab('news')}>? NEWSŠÇ—</div>
-        <div style={styles.navItem(activeTab === 'sns')} onClick={() => setActiveTab('sns')}>? SNS˜AŒg</div>
+        <h2 style={{ fontSize: '1.2rem', marginBottom: '40px' }}>ï¿½Ç—ï¿½ï¿½pï¿½lï¿½ï¿½</h2>
+        <div style={styles.navItem(activeTab === 'news')} onClick={() => setActiveTab('news')}>? NEWSï¿½Ç—ï¿½</div>
+        <div style={styles.navItem(activeTab === 'sns')} onClick={() => setActiveTab('sns')}>? SNSï¿½Aï¿½g</div>
       </div>
 
-      {/* ‰E‘¤FƒRƒ“ƒeƒ“ƒcƒGƒŠƒA */}
+      {/* ï¿½Eï¿½ï¿½ï¿½Fï¿½Rï¿½ï¿½ï¿½eï¿½ï¿½ï¿½cï¿½Gï¿½ï¿½ï¿½A */}
       <div style={styles.main}>
         
         {activeTab === 'news' ? (
           <div>
-            <h1 style={{ marginBottom: '25px' }}>NEWS‹LŽ–ì¬</h1>
+            <h1 style={{ marginBottom: '25px' }}>NEWSï¿½Lï¿½ï¿½ï¿½ì¬</h1>
             <div style={styles.card}>
-              <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="‹LŽ–‚Ìƒ^ƒCƒgƒ‹" style={styles.input} />
+              <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ï¿½Lï¿½ï¿½ï¿½Ìƒ^ï¿½Cï¿½gï¿½ï¿½" style={styles.input} />
               <div style={{ marginBottom: '15px' }}>
-                <label style={{ fontSize: '0.8rem', color: '#666' }}>ŒfÚ“úŽžF</label>
+                <label style={{ fontSize: '0.8rem', color: '#666' }}>ï¿½fï¿½Ú“ï¿½ï¿½ï¿½ï¿½F</label>
                 <input type="datetime-local" value={publishDate} onChange={(e) => setPublishDate(e.target.value)} style={styles.input} />
               </div>
               <div style={{ marginBottom: '20px', background: 'white' }}>
                 <ReactQuill theme="snow" value={content} onChange={setContent} style={{ height: '250px', marginBottom: '50px' }} />
               </div>
-              <button onClick={handleSaveNews} style={styles.button}>NEWS‚ðŒöŠJ•Û‘¶</button>
+              <button onClick={handleSaveNews} style={styles.button}>NEWSï¿½ï¿½ï¿½ï¿½ï¿½Jï¿½Û‘ï¿½</button>
             </div>
 
-            <h2>“ŠeÏ‚ÝNEWS</h2>
+            <h2>ï¿½ï¿½ï¿½eï¿½Ï‚ï¿½NEWS</h2>
             {newsList.map(news => (
               <div key={news.id} style={{ ...styles.card, padding: '15px', display: 'flex', justifyContent: 'space-between' }}>
                 <div>
@@ -127,21 +127,21 @@ const AdminApp = () => {
           </div>
         ) : (
           <div>
-            <h1 style={{ marginBottom: '25px' }}>Instagram˜AŒg</h1>
+            <h1 style={{ marginBottom: '25px' }}>Instagramï¿½Aï¿½g</h1>
             <div style={styles.card}>
-              <p style={{ color: '#666', marginBottom: '20px' }}>•\Ž¦‚µ‚½‚¢Instagram“Še‚ÌURL‚ð’Ç‰Á‚µ‚Ä‚­‚¾‚³‚¢B</p>
+              <p style={{ color: '#666', marginBottom: '20px' }}>ï¿½\ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Instagramï¿½ï¿½ï¿½eï¿½ï¿½URLï¿½ï¿½Ç‰ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½B</p>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <input type="text" value={instaUrl} onChange={(e) => setInstaUrl(e.target.value)} placeholder="https://www.instagram.com/p/..." style={styles.input} />
-                <button onClick={handleSaveInsta} style={{ ...styles.button, background: '#e1306c', height: '45px' }}>’Ç‰Á</button>
+                <button onClick={handleSaveInsta} style={{ ...styles.button, background: '#e1306c', height: '45px' }}>ï¿½Ç‰ï¿½</button>
               </div>
             </div>
 
-            <h2>“o˜^Ï‚ÝƒŠƒ“ƒN</h2>
+            <h2>ï¿½oï¿½^ï¿½Ï‚Ýƒï¿½ï¿½ï¿½ï¿½N</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px' }}>
               {instaLinks.map((link, i) => (
                 <div key={i} style={{ ...styles.card, padding: '15px', fontSize: '0.8rem' }}>
                   <div style={{ wordBreak: 'break-all', marginBottom: '10px' }}>{link}</div>
-                  <button onClick={() => handleDeleteInsta(i)} style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer' }}>íœ</button>
+                  <button onClick={() => handleDeleteInsta(i)} style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer' }}>ï¿½íœ</button>
                 </div>
               ))}
             </div>
